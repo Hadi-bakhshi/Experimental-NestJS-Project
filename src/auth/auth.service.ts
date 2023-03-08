@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuthDto } from './dto';
 import * as argon from 'argon2';
@@ -9,8 +13,8 @@ export class AuthService {
 
   async signUp(dto: AuthDto) {
     // Generate The hashed Password
-    const hash = await argon.hash(dto.password);
     try {
+      const hash = await argon.hash(dto.password);
       // Save the use in the DB
       const user = await this.prisma.user.create({
         data: {
@@ -35,7 +39,32 @@ export class AuthService {
       throw error;
     }
   }
-  signIn() {
-    return { msg: 'Hey, You are signed in' };
+  async signIn(dto: AuthDto) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: {
+          email: dto.email,
+        },
+      });
+      // If user does not exist
+      if (!user) {
+        throw new BadRequestException('Credentials does not exist');
+      }
+      // Check the password
+      const passwordMatches = await argon.verify(user.hash, dto.password);
+      // When the hash password doesn't match, throw exception
+      if (!passwordMatches) {
+        throw new BadRequestException('Your email or password is not correct');
+      }
+      // To remove password from the user object
+      const deletePassword = (info: Partial<typeof user>) => {
+        delete info.hash;
+        return info;
+      };
+      const userInfo = deletePassword(user);
+      return userInfo;
+    } catch (error) {
+      throw error;
+    }
   }
 }
