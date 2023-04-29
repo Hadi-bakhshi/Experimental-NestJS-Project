@@ -11,6 +11,7 @@ describe('App e2e', () => {
   let prisma: PrismaService;
 
   beforeAll(async () => {
+    // Create A nest server then import the app module
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -21,11 +22,14 @@ describe('App e2e', () => {
         whitelist: true,
       }),
     );
+    // initialize and listen
     await app.init();
     await app.listen(3333);
 
+    // Prisma DB connection and cleaning
     prisma = app.get(PrismaService);
     await prisma.cleanDb();
+    // Pactum base URL
     pactum.request.setBaseUrl('http://localhost:3333');
   });
 
